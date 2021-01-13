@@ -394,38 +394,38 @@ class TTGammaProcessor(processor.ProcessorABC):
         # EVENT SELECTION
         #####################
         ### PART 1B: Uncomment to add event selection
-        """
+
         # 1. ADD SELECTION
         ## apply triggers
         # muon events should be triggered by either the HLT_IsoMu24 or HLT_IsoTkMu24 triggers
         # electron events should be triggered by HLT_Ele27_WPTight_Gsf trigger
         # HINT: trigger values can be accessed with the variable events.HLT.TRIGGERNAME, 
         # the bitwise or operator can be used to select multiple triggers events.HLT.TRIGGER1 | events.HLT.TRIGGER2
-        muTrigger  = ?
-        eleTrigger = ?
+        muTrigger  = events.HLT.IsoMu24 | events.HLT.IsoTkMu24
+        eleTrigger = events.HLT.Ele27_WPTight_Gsf
 
         # 1. ADD SELECTION
         #  Event selection
         #oneMuon, should be true if there is exactly one tight muon in the event 
         # (hint, the ak.num() method returns the number of objects in each row of a jagged array)
-        oneMuon = ?
+        oneMuon = (ak.num(tightMuon) == 1)
         #muVeto, should be true if there are no tight muons in the event
-        muVeto  = ?
+        muVeto  = (ak.num(tightMuon) == 0)
 
         # 1. ADD SELECTION
         #  Event selection
  
         #oneEle should be true if there is exactly one tight electron in the event
-        oneEle  = ?
+        oneEle  = (ak.num(tightElectron) == 1)
 
         #eleVeto should be true if there are no tight electrons in the event
-        eleVeto = ?
+        eleVeto = (ak.num(tightElectron) == 0)
 
         # 1. ADD SELECTION
         #  Event selection
         #looseMuonVeto and looseElectronVeto should be true if there are 0 loose muons or electrons in the event
-        looseMuonVeto = ?
-        looseElectronVeto = ?
+        looseMuonVeto = (ak.num(looseMuon) == 0)
+        looseElectronVeto = (ak.num(looseElectron) == 0)
 
         # 1. ADD SELECTION
         # muon selection, requires events to pass:   muon trigger
@@ -434,7 +434,9 @@ class TTGammaProcessor(processor.ProcessorABC):
         #                                            have no electrons
         #                                            have no loose muons
         #                                            have no loose electrons
-        muon_eventSelection = ?
+        muon_eventSelection = (muTrigger & passOverlapRemoval & 
+                               oneMuon & eleVeto & 
+                               looseMuonVeto & looseElectronVeto) 
 
         # electron selection, requires events to pass:   electron trigger
         #                                                overlap removal
@@ -442,7 +444,9 @@ class TTGammaProcessor(processor.ProcessorABC):
         #                                                have no muons
         #                                                have no loose muons
         #                                                have no loose electrons
-        electron_eventSelection = ?
+        electron_eventSelection = (eleTrigger & passOverlapRemoval &
+                                   oneEle & muVeto & 
+                                   looseMuonVeto & looseElectronVeto) 
 
         # 1. ADD SELECTION
         #add selection 'eleSel', for events passing the electron event selection, and muSel for those passing the muon event selection
@@ -451,25 +455,25 @@ class TTGammaProcessor(processor.ProcessorABC):
         #create a selection object
         selection = PackedSelection()
 
-        selection.add('eleSel', ???)
-        selection.add('muSel', ???)
-
+        selection.add('eleSel', electron_eventSelection)
+        selection.add('muSel', muon_eventSelection)
+#        selection.add('eleSel',ak.to_numpy(electron_eventSelection))
+#        selection.add('muSel',ak.to_numpy(muon_eventSelection))
         #add two jet selection criteria
         #   First, 'jetSel' which selects events with at least 4 tightJet and at least one bTaggedJet
         nJets = 4
-        selection.add('jetSel',      ???) 
+        selection.add('jetSel',       (ak.num(tightJet) >= nJets) & (ak.num(bTaggedJet) >= 1) ) 
         #   Second, 'jetSel_3j0t' which selects events with at least 3 tightJet and exactly zero bTaggedJet
-        selection.add('jetSel_3j0t', ???) 
+        selection.add('jetSel_3j0t', (ak.num(tightJet) >= 3)     & (ak.num(bTaggedJet) == 0) ) 
 
         # add selection for events with exactly 0 tight photons
-        selection.add('zeroPho', ???)
+        selection.add('zeroPho', (ak.num(tightPhoton) == 0) )
 
         # add selection for events with exactly 1 tight photon
-        selection.add('onePho',  ???)
+        selection.add('onePho',  (ak.num(tightPhoton) == 1) )
 
         # add selection for events with exactly 1 loose photon
-        selection.add('loosePho',???)
-        """
+        selection.add('loosePho', (ak.num(loosePhoton) == 1) )
 
         ##################
         # EVENT VARIABLES
