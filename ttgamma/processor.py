@@ -136,16 +136,16 @@ class TTGammaProcessor(processor.ProcessorABC):
 
     def process(self, events):
         output = self.accumulator.identity()
-        output['EventCount'] = len(events)
+        output['EventCount'] = len(events) #records the amount of events
 
         dataset = events.metadata['dataset']
         
-        rho = events.fixedGridRhoFastjetAll
+        rho = events.fixedGridRhoFastjetAll #rho
 
         #Temporary patch so we can add photon and lepton four vectors. Not needed for newer versions of NanoAOD
-        events["Photon","charge"] = 0
+        events["Photon","charge"] = 0  #are we ading a charge field here?
         #Calculate charged hadron isolation for photons
-        events["Photon","chIso"] = (events.Photon.pfRelIso03_chg)*(events.Photon.pt)
+        events["Photon","chIso"] = (events.Photon.pfRelIso03_chg)*(events.Photon.pt)  #are we adding chIso field here?
 
         #Calculate the maximum pdgID of any of the particles in the GenPart history
         if self.isMC:
@@ -226,7 +226,8 @@ class TTGammaProcessor(processor.ProcessorABC):
         # tight muons should have a pt of at least 30 GeV, |eta| < 2.4, pass the tight muon ID cut (tightID variable), and have a relative isolation of less than 0.15
         muonSelectTight = ((events.Muon.pt > 30) & 
                            (abs(events.Muon.eta)<2.4) & 
-                           (events.Muon.tightId)
+                           (events.Muon.tightId) &
+                           (events.Muon.pfRelIso04_all < 0.15)
                           )
 
         #select loose muons        
@@ -506,14 +507,14 @@ class TTGammaProcessor(processor.ProcessorABC):
         if ak.all(ak.num(egammaPairs)==0):
             egammaMass = np.ones((len(events),1))*-1
         else:
-            egammaMass = egammaPairs.mass
+            egammaMass = (egammaPairs.e+egammaPairs.pho).mass
 
         # define mugammaMass, mass of combinations of tightMuon and leadingPhoton (hint: using the ak.cartesian() method) 
         mugammaPairs = ak.cartesian({"pho":leadingPhoton, "mu":tightMuon})
         if ak.all(ak.num(mugammaPairs)==0):
             mugammaMass = np.ones((len(events),1))*-1
         else:
-            mugammaMass = mugammaPairs.pho.mass
+            mugammaMass = (mugammaPairs.mu+mugammaPairs.pho).mass
 
 
         ###################
@@ -538,13 +539,13 @@ class TTGammaProcessor(processor.ProcessorABC):
             # 2. DEFINE VARIABLES
             # define the photon categories for tight photon events
             # a genuine photon is a reconstructed photon which is matched to a generator level photon, and does not have a hadronic parent
-            isGenPho = True
+            isGenPho = ( matchedPho & (~hadronicParent) )
             # a hadronic photon is a reconstructed photon which is matched to a generator level photon, but has a hadronic parent
-            isHadPho = True
+            isHadPho = (matchedPho & hadronicParent)
             # a misidentified electron is a reconstructed photon which is matched to a generator level electron
-            isMisIDele = True
+            isMisIDele = matchedEle
             # a hadronic/fake photon is a reconstructed photon that does not fall within any of the above categories and has at least one photon
-            isHadFake =True  & (ak.num(leadingPhoton)==1)
+            isHadFake = ( (~isGenPho) & (~isHadPho) & (~isMisIDele)  & (ak.num(leadingPhoton)==1) )
 
             #define integer definition for the photon category axis 
             phoCategory = 1*isGenPho + 2*isMisIDele + 3*isHadPho + 4*isHadFake
@@ -560,13 +561,13 @@ class TTGammaProcessor(processor.ProcessorABC):
             #####
             # 2. DEFINE VARIABLES
             # a genuine photon is a reconstructed photon which is matched to a generator level photon, and does not have a hadronic parent
-            isGenPhoLoose = True
+            isGenPhoLoose = (matchedPhoLoose & (~hadronicParentLoose))
             # a hadronic photon is a reconstructed photon which is matched to a generator level photon, but has a hadronic parent
-            isHadPhoLoose = True
+            isHadPhoLoose = (matchedPhoLoose & hadronicParentLoose)
             # a misidentified electron is a reconstructed photon which is matched to a generator level electron
-            isMisIDeleLoose = True
+            isMisIDeleLoose = matchedEleLoose
             # a hadronic/fake photon is a reconstructed photon that does not fall within any of the above categories and has at least one loose photon
-            isHadFakeLoose = True & (ak.num(leadingPhotonLoose)==1)        
+            isHadFakeLoose = ( (~isGenPhoLoose) & (~isHadPhoLoose) & (~isMisIDeleLoose) & (ak.num(leadingPhotonLoose)==1) )     
 
             #define integer definition for the photon category axis
             phoCategoryLoose = 1*isGenPhoLoose + 2*isMisIDeleLoose + 3*isHadPhoLoose + 4*isHadFakeLoose            
@@ -574,7 +575,7 @@ class TTGammaProcessor(processor.ProcessorABC):
         ################
         # EVENT WEIGHTS
         ################
-        """
+        
         #create a processor Weights object, with the same length as the number of events in the chunk
         weights = processor.Weights(len(events))
 
@@ -598,12 +599,12 @@ class TTGammaProcessor(processor.ProcessorABC):
                 print("WARNING : Using TTGamma_SingleLept_2016 pileup distribution instead of {}".format(datasetFull))
                 datasetFull = "TTGamma_SingleLept_2016"
 
-            puWeight = puLookup[]
-            puWeight_Up = ?
-            puWeight_Down = ?
+            puWeight = puLookup[datasetFull](events.Pileup.nTrueInt)
+            puWeight_Up = puLookup_Up[datasetFull](events.Pileup.nTrueInt)
+            puWeight_Down = puLookup_Down[datasetFull](events.Pileup.nTrueInt)
 
             # add the puWeight and it's uncertainties to the weights container
-            weights.add('puWeight',weight=?, weightUp=?, weightDown=?)
+            weights.add('puWeight',weight=puWeight, weightUp=puWeight_Up, weightDown=puWeight_Down)
 
             #btag key name
             #name / working Point / type / systematic / jetType
@@ -647,7 +648,7 @@ class TTGammaProcessor(processor.ProcessorABC):
 
             # 4. SYSTEMATICS
             # add electron efficiency weights to the weight container
-            weights.add('eleEffWeight',weight=?,weightUp=?,weightDown=?)
+            weights.add('eleEffWeight',weight=eleSF,weightUp=eleSF_up,weightDown=eleSF_down)
 
         
             muID = self.mu_id_sf(tightMuon.eta, tightMuon.pt)
@@ -663,7 +664,7 @@ class TTGammaProcessor(processor.ProcessorABC):
 
             # 4. SYSTEMATICS
             # add muon efficiency weights to the weight container
-            weights.add('muEffWeight',weight=?,weightUp=?, weightDown=?)
+            weights.add('muEffWeight',weight=muSF,weightUp=muSF_up, weightDown=muSF_down)
 
 
             #in some samples, generator systematics are not available, in those case the systematic weights of 1. are used
@@ -703,7 +704,6 @@ class TTGammaProcessor(processor.ProcessorABC):
 
                 weights.add('ISR',weight=np.ones(len(events)), weightUp=psWeights[:,2], weightDown=psWeights[:,0])
                 weights.add('FSR',weight=np.ones(len(events)), weightUp=psWeights[:,3], weightDown=psWeights[:,1])
-        """
 
 
         ###################
@@ -757,33 +757,33 @@ class TTGammaProcessor(processor.ProcessorABC):
                 #  use the selection.all() method to select events passing 
                 #  the lepton selection, 4-jet 1-tag jet selection, and either the one-photon or loose-photon selections
                 #  ex: selection.all( *('LIST', 'OF', 'SELECTION', 'CUTS') )
-                phosel = selection.all(*(maskTightPhoton))
-                phoselLoose = selection.all(*(maskLoosePhoton) )
+                phosel = selection.all(*(lepSel,"jetSel","onePho"))
+                phoselLoose = selection.all(*(lepSel,"jetSel","loosePho") )
 
                 # 3. FILL HISTOGRAMS
                 #    fill photon_pt and photon_eta, using the tightPhotons array, from events passing the phosel selection
         
-                output['photon_pt'].fill(dataset=tightPhoton,
+                output['photon_pt'].fill(dataset=dataset,
                                          pt=ak.flatten(tightPhoton[phosel].pt),
-                                         category=phoCategory,
+                                         category=phoCategory[phosel],
                                          lepFlavor=lepton,
                                          systematic=syst,
-                                         weight=evtWeight)           
+                                         weight=evtWeight[phosel])           
     
                 output['photon_eta'].fill(dataset=tightPhoton,
                                           eta=ak.flatten(tightPhoton[phosel].eta),
-                                          category=phoCategory,
+                                          category=phoCategory[phosel],
                                           lepFlavor=lepton,
                                           systematic=syst,
-                                          weight=evtWeight)
+                                          weight=evtWeight[phosel])
                 
                 #    fill photon_chIso histogram, using the loosePhotons array (photons passing all cuts, except the charged hadron isolation cuts)
                 output['photon_chIso'].fill(dataset=loosePhoton,
                                             chIso=ak.flatten(tightPhoton[phoselLoose].pfRelIso03_chg),
-                                            category=phoCategoryLoose,
+                                            category=phoCategoryLoose[phoselLoose],
                                             lepFlavor=lepton,
                                             systematic=syst,
-                                            weight=evtWeight)
+                                            weight=evtWeight[phoselLoose])
                 
                 #    fill M3 histogram, for events passing the phosel selection
                 # Note that for M3, ak.fill_none() is also needed so there is at least one entry per event
