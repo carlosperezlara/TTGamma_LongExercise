@@ -778,8 +778,8 @@ class TTGammaProcessor(processor.ProcessorABC):
                                           weight=evtWeight[phosel])
                 
                 #    fill photon_chIso histogram, using the loosePhotons array (photons passing all cuts, except the charged hadron isolation cuts)
-                output['photon_chIso'].fill(dataset=loosePhoton,
-                                            chIso=ak.flatten(tightPhoton[phoselLoose].pfRelIso03_chg),
+                output['photon_chIso'].fill(dataset=dataset,
+                                            chIso=ak.flatten(loosePhoton[phoselLoose].chIso),
                                             category=phoCategoryLoose[phoselLoose],
                                             lepFlavor=lepton,
                                             systematic=syst,
@@ -787,7 +787,7 @@ class TTGammaProcessor(processor.ProcessorABC):
                 
                 #    fill M3 histogram, for events passing the phosel selection
                 # Note that for M3, ak.fill_none() is also needed so there is at least one entry per event
-                output['M3'].fill(dataset=M3,
+                output['M3'].fill(dataset=dataset,
                                   M3=ak.flatten(ak.fill_none(M3,-1)),
                                   category=phoCategoryLoose,
                                   lepFlavor=lepton,
@@ -802,18 +802,18 @@ class TTGammaProcessor(processor.ProcessorABC):
             phosel_3j0t_mu = selection.all(*('muSel', "jetSel_3j0t", 'onePho') )
             
             #Fill the photon_lepton_mass histogram for events passing phosel_3j0t_e and phosel_3j0t_mu
-            output['photon_lepton_mass_3j0t'].fill(dataset=tightPhoton[phosel_3j0t_e],
+            output['photon_lepton_mass_3j0t'].fill(dataset=dataset,
                                                    mass=tightPhoton[phosel_3j0t_e].mass,
-                                                   category=phoCategory,
+                                                   category=phoCategory[phosel_3j0t_e],
                                                    lepFlavor='electron',
                                                    systematic=syst,
-                                                   weight=evtWeight)
-            output['photon_lepton_mass_3j0t'].fill(dataset=tightPhoton[phosel_3j0t_mu],
-                                                   mass=tightPhoton[phosel_3j0t_e].mass,
-                                                   category=phoCategory,
+                                                   weight=evtWeight[phosel_3j0t_e])
+            output['photon_lepton_mass_3j0t'].fill(dataset=dataset,
+                                                   mass=tightPhoton[phosel_3j0t_mu].mass,
+                                                   category=phoCategory[phosel_3j0t_mu],
                                                    lepFlavor='muon',
                                                    systematic=syst,
-                                                   weight=evtWeight)
+                                                   weight=evtWeight[phosel_3j0t_mu])
 
         return output
 
