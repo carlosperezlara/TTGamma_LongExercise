@@ -96,19 +96,19 @@ class TTGammaProcessor(processor.ProcessorABC):
         ### Accumulator for holding histograms
         self._accumulator = processor.dict_accumulator({
             #Test histogram; not needed for final analysis
-            'all_photon_pt'                 : hist.Hist("Counts", dataset_axis, pt_axis),
+            'all_photon_pt'                 : hist.Hist("Counts", dataset_axis, pt_axis, phoCategory_axis, lep_axis, systematic_axis),
 
             # 3. ADD HISTOGRAMS
             ## book histograms for photon pt, eta, and charged hadron isolation
-            'photon_pt'                     : hist.Hist("photon_pt", dataset_axis, pt_axis),
-            'photon_eta'                    : hist.Hist("photon_eta", dataset_axis, eta_axis),
-            'photon_chIso'                  : hist.Hist("photon_chIso", dataset_axis, chIso_axis),
+            'photon_pt'                     : hist.Hist("photon_pt", dataset_axis, pt_axis, phoCategory_axis, lep_axis, systematic_axis ),
+            'photon_eta'                    : hist.Hist("photon_eta", dataset_axis, eta_axis, phoCategory_axis, lep_axis, systematic_axis),
+            'photon_chIso'                  : hist.Hist("photon_chIso", dataset_axis, chIso_axis, phoCategory_axis, lep_axis, systematic_axis),
 
             ## book histogram for photon/lepton mass in a 3j0t region
-            'photon_lepton_mass_3j0t'       : hist.Hist("photon_leptop_mass_3j0t",dataset_axis, mass_axis),
+            'photon_lepton_mass_3j0t'       : hist.Hist("photon_leptop_mass_3j0t",dataset_axis, mass_axis, phoCategory_axis, lep_axis, systematic_axis),
 
             ## book histogram for M3 variable
-            'M3'                            : hist.Hist("M3",dataset_axis, m3_axis),
+            'M3'                            : hist.Hist("M3",dataset_axis, m3_axis, phoCategory_axis, lep_axis, systematic_axis),
 
             'EventCount'             : processor.value_accumulator(int),
         })
@@ -789,7 +789,7 @@ class TTGammaProcessor(processor.ProcessorABC):
                 # Note that for M3, ak.fill_none() is also needed so there is at least one entry per event
                 output['M3'].fill(dataset=dataset,
                                   M3=ak.flatten(ak.fill_none(M3[phosel],-1)),
-                                  category=phoCategoryLoose[phosel],
+                                  category=phoCategory[phosel],
                                   lepFlavor=lepton,
                                   systematic=syst,
                                   weight=evtWeight[phosel])
@@ -803,13 +803,13 @@ class TTGammaProcessor(processor.ProcessorABC):
             
             #Fill the photon_lepton_mass histogram for events passing phosel_3j0t_e and phosel_3j0t_mu
             output['photon_lepton_mass_3j0t'].fill(dataset=dataset,
-                                                   mass=ak.flatten(egammaMass[phosel_3j0t_e].mass),
+                                                   mass=ak.flatten(egammaMass[phosel_3j0t_e]),
                                                    category=phoCategory[phosel_3j0t_e],
                                                    lepFlavor='electron',
                                                    systematic=syst,
                                                    weight=evtWeight[phosel_3j0t_e])
             output['photon_lepton_mass_3j0t'].fill(dataset=dataset,
-                                                   mass=ak.flatten(mugammaMass[phosel_3j0t_mu].mass),
+                                                   mass=ak.flatten(mugammaMass[phosel_3j0t_mu]),
                                                    category=phoCategory[phosel_3j0t_mu],
                                                    lepFlavor='muon',
                                                    systematic=syst,
